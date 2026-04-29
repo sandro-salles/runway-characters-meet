@@ -22,6 +22,7 @@ const {
   RECALL_API_KEY,
   RECALL_REGION = "us-west-2",
   PORT = "3000",
+  RUNWAY_TOOLS_MODE = "backend_rpc",
 } = process.env;
 
 const PUBLIC_URL =
@@ -36,6 +37,9 @@ const WS_PUBLIC_URL = PUBLIC_URL.replace(/^https/, "wss").replace(
 );
 
 const RECALL_BASE = `https://${RECALL_REGION}.recall.ai/api/v1`;
+const RUNWAY_BACKEND_RPC_TOOL_NAME = "obter_fala";
+const RUNWAY_CLIENT_EVENT_TOOL_NAME = "registrar_evento";
+const RUNWAY_TOOLS_MODES = new Set(["backend_rpc", "client_event", "empty", "off"]);
 
 // In-memory session store
 const sessions = new Map();
@@ -71,6 +75,38 @@ async function runwayFetch(
     );
   }
   return data;
+}
+
+function buildRunwayToolsPayload() {
+  const mode = RUNWAY_TOOLS_MODE.trim().toLowerCase();
+  if (!RUNWAY_TOOLS_MODES.has(mode)) {
+    throw new Error(
+      `Invalid RUNWAY_TOOLS_MODE="${RUNWAY_TOOLS_MODE}". Use backend_rpc, client_event, empty, or off.`
+    );
+  }
+  if (mode === "off") return null;
+  if (mode === "empty") return [];
+  if (mode === "client_event") {
+    return [
+      {
+        type: "client_event",
+        name: RUNWAY_CLIENT_EVENT_TOOL_NAME,
+        description:
+          "Use esta ferramenta apenas para registrar no console que a ferramenta client_event foi chamada.",
+        parameters: [],
+      },
+    ];
+  }
+  return [
+    {
+      type: "backend_rpc",
+      name: RUNWAY_BACKEND_RPC_TOOL_NAME,
+      description:
+        "Ao ouvir Fala., chame esta ferramenta. Ela retorna a fala final em português do Brasil.",
+      parameters: [],
+      timeoutSeconds: 4,
+    },
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -481,6 +517,19 @@ async function runSessionPipeline(
       log("Note: personality override is only supported for custom characters — using preset defaults");
     }
 
+    const runwayTools = buildRunwayToolsPayload();
+    const createPayload = {
+      model: "gwm1_avatars",
+      avatar,
+      maxDuration: maxDuration || 300,
+    };
+    if (runwayTools !== null) {
+      createPayload.tools = runwayTools;
+      log(`Runway tools payload enabled: ${JSON.stringify(runwayTools)}`);
+    } else {
+      log("Runway tools payload disabled: tools key omitted");
+    }
+
     log("Creating Runway realtime session...");
     const created = await runwayFetch(
       baseUrl,
@@ -488,11 +537,7 @@ async function runSessionPipeline(
       "/v1/realtime_sessions",
       {
         method: "POST",
-        body: {
-          model: "gwm1_avatars",
-          avatar,
-          maxDuration: maxDuration || 300,
-        },
+        body: createPayload,
       }
     );
     session.runwaySessionId = created.id;

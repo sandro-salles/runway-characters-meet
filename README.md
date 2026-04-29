@@ -80,6 +80,7 @@ The easiest way to share with others. Only the Recall.ai key lives on the server
 | `RECALL_REGION` | Server `.env` | Recall.ai region (default: `us-west-2`) |
 | `PUBLIC_URL` | Server `.env` | How Recall reaches this server (auto-detected on Railway) |
 | `PORT` | Server `.env` | Server port (default: `3000`, auto-set on Railway) |
+| `RUNWAY_TOOLS_MODE` | Server `.env` | Runway tools A/B mode: `backend_rpc` sends the minimal Contact Meeting backend RPC tool, `client_event` sends a minimal client-event tool, `empty` sends `tools: []`, and `off` omits the `tools` key. Default: `backend_rpc` |
 | Runway API Key | Browser UI | Each user enters their own — saved in localStorage |
 
 ## Project Structure

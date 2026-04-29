@@ -285,6 +285,22 @@ async function start() {
     if (reason) console.log("[bot] Publication scan:", reason);
   }
 
+  room.on(RoomEvent.DataReceived, (payload, participant, kind, topic) => {
+    const text = new TextDecoder().decode(payload);
+    let parsed = text;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      // Keep the raw text when Runway sends a non-JSON payload.
+    }
+    console.log("[bot] Runway client_event/data message:", {
+      from: participant?.identity || null,
+      kind: kind || null,
+      topic: topic || null,
+      payload: parsed,
+    });
+  });
+
   room.on(RoomEvent.TrackSubscribed, (track) => {
     attachTrackIfNeeded(track);
   });
